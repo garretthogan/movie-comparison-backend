@@ -21,6 +21,18 @@ function getPage(query) {
     .then(data => data.json())  
 }
 
+function compareMovies(a, b) {
+  const promises = [getMovie(a), getMovie(b)];
+  return Promise.all(promises)
+    .then(movies => {
+      const ratings = movies.map(movie => ({
+        title: movie.Title,
+        score: movie.Metascore
+      })).sort((prev, curr) => (prev.score > curr.score) ? -1 : 1);
+      return { ratings, winner: ratings[0] };
+    });  
+}
+
 app.get('/search', (req, res) => {
   getPage(req.query)
     .then(searchResults => res.send(JSON.stringify(searchResults.Search)))
@@ -36,16 +48,8 @@ app.get('/movie/:id', (req, res) => {
 app.options('/compare', cors());
 app.post('/compare', (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  const promises = [getMovie(req.body.a), getMovie(req.body.b)];
-  Promise.all(promises)
-    .then(movies => {
-      const ratings = movies.map(movie => ({
-        title: movie.Title,
-        score: movie.Metascore
-      })).sort((a, b) => (a.score > b.score) ? -1 : 1);
-      
-      res.send(JSON.stringify({ ratings, winner: ratings[0] }));
-    });
+  compareMovies(req.body.a, req.body.b)
+    .then(result => res.send(JSON.stringify(result)));
 });
 
 app.listen(PORT, () => {
